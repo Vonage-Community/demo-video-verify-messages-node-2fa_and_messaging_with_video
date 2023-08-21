@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ADD notify_sms INTEGER DEFAULT 0;

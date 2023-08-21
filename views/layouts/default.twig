@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div class="bg-black flex gap-4">
+        <div class="text-white bold p-4 grow">
+            <a href="/">Vonage Video and Verify Integration Demo</a>
+        </div>
+
+        <div class="flex">
+            {% if authenticated %}
+                {% if isAdmin %}
+                    <div class="text-white bold p-4 grow hover:text-black hover:bg-white">
+                        <a href="/admin/meetings">Meetings</a>
+                    </div>
+                    <div class="text-white bold p-4 grow hover:text-black hover:bg-white">
+                        <a href="/admin/users">Users</a>
+                    </div>
+                {% endif %}
+
+                <div class="text-white bold p-4 grow hover:text-black hover:bg-white">
+                    <a href="/logout">Log Out</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container mx-auto">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

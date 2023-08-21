@@ -1,0 +1,36 @@
+{% extends 'layouts/default.twig' %}
+
+{% block content %}
+<h1 class="font-bold text-3xl">Create New Meeting</h1>
+
+{% for msg in getFlashMessages('error') %}
+    <div class="rounded p-2 font-bold text-white bg-red-400 my-4">{{msg}}</div>
+{% endfor %}
+
+{% for msg in getFlashMessages('success') %}
+    <div class="rounded p-2 font-bold text-white bg-green-500 my-4">{{msg}}</div>
+{% endfor %}
+
+<form method="post">
+<div class="my-4 grid grid-cols-1 gap-4">
+    <div>
+        <div><label>Meeting Name</label></div>
+        <input id="meeting_name" name="meeting_name" type="text" class="w-full border rounded border-black p-1 text-black" placeholder="{{ randomName }}"/>
+    </div>
+
+    <div class="text-center">
+        <button id="btn-create-meeting" class="bg-black text-white font-bold p-2 rounded">Create Meeting</button>
+    </div>
+</div>
+</form>
+
+<script>
+document.getElementById('btn-create-meeting').addEventListener('click', (e) => {
+    const nameEl = document.getElementById('meeting_name');
+    if (nameEl.value === '') {
+        nameEl.value = nameEl.placeholder;
+    }
+});
+</script>
+
+{% endblock %}

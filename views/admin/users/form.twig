@@ -1,0 +1,43 @@
+{% extends 'layouts/default.twig' %}
+
+{% block content %}
+<h1 class="font-bold text-3xl">{{ method }} User</h1>
+
+{% for msg in getFlashMessages('error') %}
+    <div class="rounded p-2 font-bold text-white bg-red-400 my-4">{{msg}}</div>
+{% endfor %}
+
+<form method="post">
+<div class="my-4 grid grid-cols-1 gap-4">
+    <div>
+        <div><label>Username</label></div>
+        <input name="username" type="text" class="w-full border rounded border-black p-1" value="{{user.username}}"/>
+    </div>
+
+    <div>
+        <div><label>New Password</label></div>
+        <input name="password" type="text" class="w-full border rounded border-black p-1" />
+    </div>
+
+    <div>
+        <div><label>Phone Number</label></div>
+        <input name="phone_number" type="text" class="w-full border rounded border-black p-1" value="{{user.phone_number}}"/>
+    </div>
+
+    <div class="flex ">
+        <div class="shrink"><input name="notify_sms" type="checkbox" class="inline w-full border rounded border-black p-1" {% if user.notify_sms %}checked{% endif %} /></div>
+        <div class="grow px-2">Notify via SMS?</div>
+    </div>
+
+    <div class="flex ">
+        <div class="shrink"><input name="admin" type="checkbox" class="inline w-full border rounded border-black p-1" {% if user.admin %}checked{% endif %} /></div>
+        <div class="grow px-2">Is Admin?</div>
+    </div>
+
+    <div class="text-center">
+        <button class="bg-black text-white font-bold p-2 rounded">{{ method }} User</button>
+    </div>
+</div>
+</form>
+
+{% endblock %}

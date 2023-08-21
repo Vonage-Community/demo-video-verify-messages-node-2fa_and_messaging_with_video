@@ -1,0 +1,95 @@
+{% extends 'layouts/default.twig' %}
+
+{% block content %}
+<div id="videos" class="p-4 flex" data-meetingid="{{ meetingId }}">
+    <div id="streams" class="{% if role == 'moderator' %}w-4/5{% else %}w-full{% endif %} flex h-96 gap-4"></div>
+    {% if role == 'moderator' %}
+        <div class="w-1/5">
+            <div>
+                <h2 class="text-2xl font-bold text-center">Moderator Panel</h2>
+            </div>
+
+            <div>
+                <div><h3 class="text-xl font-bold">Users</h3></div>
+                <div id="current-users">
+                    {% for user in currentUsers %}
+                        <div>{{user.username}}</div>
+                    {% endfor %}
+                </div>
+                <div class="border-t border-black mt-2">
+                    <h4 class="font-bold">Invite User</h4>
+                </div>
+                <div class="flex">
+                    <input type="text" id="name-search" class="border p-2 border-black rounded" />
+                </div>
+                <div id="user-search-list" class="border border-slate-300 p-2 w-full hidden" style="position: relative; z-index: 99"></div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script src="https://unpkg.com/@vonage/video-client@latest/dist/js/opentok.js"></script>
+<script src="/js/meeting_invite.js"></script>
+<script>
+let applicationId = '{{ applicationId }}';
+let sessionId = '{{ sessionId }}';
+let token = '{{ token }}';
+
+function handleError(error) {
+  if (error) {
+    console.error(error);
+  }
+}
+
+function initializeSession() {
+  const session = OT.initSession(applicationId, sessionId);
+
+  // Subscribe to a newly created stream
+  session.on('streamCreated', (event) => {
+    const subscriberOptions = {
+      insertMode: 'append',
+      width: '100%',
+      height: '100%'
+    };
+    session.subscribe(event.stream, 'streams', subscriberOptions, handleError);
+  });
+
+  session.on('sessionDisconnected', (event) => {
+    console.log('You were disconnected from the session.', event.reason);
+  });
+
+  // initialize the publisher
+  const publisherOptions = {
+    insertMode: 'append',
+    width: '100%',
+    height: '100%'
+  };
+  const publisher = OT.initPublisher('streams', publisherOptions, handleError);
+
+  // Connect to the session
+  session.connect(token, (error) => {
+    if (error) {
+      handleError(error);
+    } else {
+      // If the connection is successful, publish the publisher to the session
+      session.publish(publisher, handleError);
+    }
+  });
+}
+
+initializeSession();
+
+// This just gives us better control over the video sizes
+const observer = new MutationObserver((mutationList, observer) => {
+    for (const mutation of mutationList) {
+        if (mutation.type === 'childList') {
+            for (child of document.getElementById('streams').children) {
+                child.classList.add('w-96');
+                child.removeAttribute('style');
+            }
+        }
+    }
+});
+observer.observe(document.getElementById('streams'), { childList: true, subtree: true });
+</script>
+{% endblock %}

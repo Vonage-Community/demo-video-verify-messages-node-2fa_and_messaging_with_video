@@ -1,0 +1,30 @@
+{% extends "layouts/default.twig" %}
+
+{% block content %}
+<form method="post">
+<div class="border-2 shadow-xl rounded p-4 m-4 grid grid-cols-1 gap-4">
+    <div class="text-center">
+        <h1 class="font-bold text-3xl">Log In</h1>
+    </div>
+
+    {% for msg in getFlashMessages('error') %}
+        <div class="rounded p-2 font-bold text-white bg-red-400 my-4">{{msg}}</div>
+    {% endfor %}
+
+    <div>
+        <div><label>Username</label></div>
+        <input name="username" type="text" class="w-full border rounded border-black p-1" />
+    </div>
+
+    <div>
+        <div><label>Password</label></div>
+        <input name="password" type="password" class="w-full border rounded border-black p-1" />
+    </div>
+
+    <div class="text-center">
+        <button class="bg-black text-white font-bold p-2 rounded">Log In</button>
+    </div>
+</div>
+</form>
+
+{% endblock %}
