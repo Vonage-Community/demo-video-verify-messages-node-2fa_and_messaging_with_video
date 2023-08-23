@@ -12,21 +12,51 @@ This sample application shows a few different ways that the Vonage Video platfor
 * Node.js 16+
 * A tunneling service such as [ngrok](https://developer.vonage.com/en/getting-started/tools/ngrok) or a hosting service like Railway.
 * A Vonage Application configured for Video and Messaging
+* A Vonage AI Studio HTTP Bot configured for a support workflow
+
+This demo uses SQLite to store room and user information. It is not currently designed to talk to an external database.
 
 ### Set Up
 
+1. Create a Vonage Application with Messages and Video Capabilities
+    1. From your Customer Dashboard, go to "Build & Manage", and then ["Applications"](https://dashboard.nexmo.com/applications).
+    1. Click on "Create a new Application"
+    1. Give your application a Name
+    1. Click on "Generate public and private key" to generate a new private key. Save this file to your computer so we can use it later.
+    1. Toggle the "Messages" capability on. Enter "https://example.com/inbound" and "https://example.com/status" for the Inbound and Status URLs, respectively
+    1. Toggle the "Video" capability on. We will not need to configure any callback URLs.
+    1. Click on "Generate new application"
+    1. On the Application screen, click "Link" next to a number to link that number to this application. If you do not have a number, you can purchase one from the ["Buy Numbers"](https://dashboard.nexmo.com/buy-numbers) screen.
+1. Set up the AI Studio HTTP Bot
+    1. Download the AI Studio Agent from [here](https://github.com/Vonage-Community/demo-video-verify-messages-node-2fa_and_messaging_with_video/raw/main/aistudio_agent.zip)
+    1. From the customer dashboard, go to "Build & Manage" and then "AI Studio"
+    1. Click on "Go to AI Studio"
+    1. On the AI Studio "Agents" screen, click on "Import Agent"
+    1. Click the "Upload" button, and select the AI Studio Agent ZIP file we just downloaded
+    1. Note the region it will be deployed to
+    1. Click on "Import Agent" to create the new agent
+    1. Click on the new "Video Bot" agent that was created
+    1. On the flow editor screen, click on "Publish", and then on the "Publish button"
+    1. Close the publish window
+
+
+
 #### Local Installation
 
-* Clone this repository to your computer
-* Copy `.env.dist` to `.env`
-* Fill in the following information into the new `.env` file. You need either `PRIVATE_KEY` or `PRIVATE_KEY64`, but not both:
-  * `API_KEY` - Your Vonage API Key from your customer dashboard.
-  * `API_SECRET` - Your Vonage API Secret from your customer dashboard.
-  * `VONAGE_VERIFY_BRAND` - The name you want to appear in the Verify messages.
-  * `API_APPLICATION_ID` - The Application ID you have set up in your customer dashboard.
-  * `PRIVATE_KEY` - Path to where the Application Private Key is located on your computer.
-  * `PRIVATE_KEY64` - A base64-encoded version of the Application Private Key. [See this article for more info](https://developer.vonage.com/en/blog/using-private-keys-in-environment-variables).
-  * `VONAGE_FROM_NUMBER` - A number linked to the Application to be used with the Messages API.
+
+1. Clone this repository to your computer
+1. Copy `.env.dist` to `.env`
+1. Fill in the following information into the new `.env` file. You need either `PRIVATE_KEY` or `PRIVATE_KEY64`, but not both:
+    * `API_KEY` - Your Vonage API Key from your customer dashboard.
+    * `API_SECRET` - Your Vonage API Secret from your customer dashboard.
+    * `VONAGE_VERIFY_BRAND` - The name you want to appear in the Verify messages.
+    * `API_APPLICATION_ID` - The Application ID you have set up in your customer dashboard.
+    * `PRIVATE_KEY` - Path to where the Application Private Key is located on your computer.
+    * `PRIVATE_KEY64` - A base64-encoded version of the Application Private Key. [See this article for more info](https://developer.vonage.com/en/blog/using-private-keys-in-environment-variables).
+    * `VONAGE_FROM_NUMBER` - A number linked to the Application to be used with the Messages API.
+    * `VONAGE_AI_STUDIO_KEY` - An API Key from AI Studio. See [here](https://studio.docs.ai.vonage.com/api-integration/authentication) how to generate one.
+    * `VONAGE_AI_STUDIO_BOT_ID` - The ID of the bot created in AI Studio. See [here](https://studio.docs.ai.vonage.com/http/working-with-http-agents) for instructions on finding the ID.
+    * `VONAGE_AI_STUDIO_REGION` - Either "eu" or "us", depending on what region your bot is deployed in.
 
 ## Running the Demo
 
@@ -193,4 +223,109 @@ router.post('/api/meetings/:id/users', protectRoute('*'), async (req, res) => {
         }
     })
 });
+```
+
+### Vonage AI Studio
+
+This demo can detect when there are audio or video isses, and offer to have the user engage with a support bot. You can also simulate connection issues directly to try out the support. This will start a conversation with an AI Studio bot that can offer some tips for when a user has issues.
+
+This uses a combination of some UI elements in the meeting view itself, along with a custom API Client to talk to our AI Studio API.
+
+```js
+// src/AIStudio.js
+import { Client } from "@vonage/server-client";
+
+export class AIStudio extends Client {
+    constructor(apiKey, agentId, region) {
+        super({
+            baseUrl: 'https://studio-api-us.ai.vonage.com'
+        });
+        this.apiKey = apiKey;
+        this.agentId = agentId;
+        
+        if (region == 'us') {
+            this.baseUrl = 'https://studio-api-us.ai.vonage.com';
+        } else {
+            this.baseUrl = 'https://studio-api-eu.ai.vonage.com';
+        }
+    }
+
+    async addAuthenticationToRequest(request) {
+        if (request.data.sessionToken) {
+            request.headers = Object.assign({}, request.headers, {
+                Authorization: `Bearer ${request.data.sessionToken}`
+            });
+            delete request.data.sessionToken;
+            if (request.data == {}) {
+                delete request.data;
+            }
+        } else {
+            request.headers = Object.assign({}, request.headers, {
+                'X-Vgai-Key': this.apiKey
+            });
+        }
+        return request;
+    }
+
+    async startConversation() {
+        const resp = await this.sendPostRequest(`${this.baseUrl}/http/init`, {agent_id: this.agentId});
+        return resp.data;
+    }
+
+    async stepConversation(sessionId, sessionToken, input) {
+        const data = {
+            sessionToken,
+            input: input || ''
+        }
+
+        const resp = await this.sendPostRequest(`${this.baseUrl}/http/${sessionId}/step`, data);
+        return resp.data;
+    }
+}
+```
+
+```js
+// public/js/support.js
+
+// ...
+
+function submitSupportQuestion() {
+    const input = document.getElementById('support-question').value;
+    document.getElementById('support-question').value = '';
+    addToChat(input, 'bg-blue-300');
+
+    fetch('/api/support/conversation', {
+        method: 'POST',
+        body: JSON.stringify({
+            input
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(res => res.json())
+        .then(data => handleSupportResponse(data));
+}
+
+// ...
+
+document.getElementById('request-support-btn').addEventListener('click', (e) => {
+    document.getElementById('support-request').classList.add('hidden');
+    document.getElementById('support-chat').classList.remove('hidden');
+
+    fetch('/api/support/init', {
+        method: 'POST'
+    })
+        .then(() => {
+            fetch('/api/support/conversation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(res => res.json())
+                .then(data => handleSupportResponse(data));
+        });
+});
+
 ```
