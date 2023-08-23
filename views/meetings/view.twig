@@ -2,34 +2,52 @@
 
 {% block content %}
 <div id="videos" class="p-4 flex" data-meetingid="{{ meetingId }}">
-    <div id="streams" class="{% if role == 'moderator' %}w-4/5{% else %}w-full{% endif %} flex h-96 gap-4"></div>
-    {% if role == 'moderator' %}
-        <div class="w-1/5">
-            <div>
-                <h2 class="text-2xl font-bold text-center">Moderator Panel</h2>
-            </div>
+    <div id="streams" class="w-4/5 flex h-96 gap-4"></div>
+    <div class="w-1/5">
+        {% if role == 'moderator' %}
+        <div>
+            <h2 class="text-2xl font-bold text-center">Moderator Panel</h2>
+        </div>
 
-            <div>
-                <div><h3 class="text-xl font-bold">Users</h3></div>
-                <div id="current-users">
-                    {% for user in currentUsers %}
-                        <div>{{user.username}}</div>
-                    {% endfor %}
-                </div>
-                <div class="border-t border-black mt-2">
-                    <h4 class="font-bold">Invite User</h4>
-                </div>
-                <div class="flex">
-                    <input type="text" id="name-search" class="border p-2 border-black rounded" />
-                </div>
-                <div id="user-search-list" class="border border-slate-300 p-2 w-full hidden" style="position: relative; z-index: 99"></div>
+        <div>
+            <div><h3 class="text-xl font-bold">Users</h3></div>
+            <div id="current-users">
+                {% for user in currentUsers %}
+                    <div>{{user.username}}</div>
+                {% endfor %}
+            </div>
+            <div class="border-t border-black mt-2">
+                <h4 class="font-bold">Invite User</h4>
+            </div>
+            <div class="flex">
+                <input type="text" id="name-search" class="border p-2 border-black rounded" />
+            </div>
+            <div id="user-search-list" class="border border-slate-300 p-2 w-full hidden" style="position: relative; z-index: 99"></div>
+        </div>
+        {% endif %}
+        <div class="grid grid-cols-1">
+            <div style="position: absolute; bottom: 0" id="simulate-container">
+                <button id="simulate-problem" class="p-2 font-bold text-white bg-black rounded">Simulation connection problems</button>
+            </div>
+            <div id="support-request" class="hidden" style="position: absolute; bottom: 0">
+                It looks like your connection is having problems. Would you like to chat with support?
+                <button id="request-support-btn" class="p-2 font-bold text-white bg-black rounded">Request Support</button>
+            </div>
+            <div id="support-chat" class="hidden mx-2 p-2 rounded border border-slate-400" style="position: absolute; bottom: 0">
+                <div id="chat-history" class="max-h-48 overflow-x-scroll"></div>
+                <div id="chat-controls" class="flex gap-2">
+                    <div class="grow"><input id="support-question" type="text" class="w-full p-2 border border-black"/></div>
+                    <div class="shrink"><button id="send-question-btn" class="p-2 font-bold text-white bg-black rounded">Send</button></div>
+                    <div class="shrink"><button id="close-support-btn" class="p-2 font-bold text-white bg-black rounded">Close</button></div>
+                 </div>
             </div>
         </div>
-    {% endif %}
+    </div>
 </div>
 
 <script src="https://unpkg.com/@vonage/video-client@latest/dist/js/opentok.js"></script>
 <script src="/js/meeting_invite.js"></script>
+<script src="/js/support.js"></script>
 <script>
 let applicationId = '{{ applicationId }}';
 let sessionId = '{{ sessionId }}';
@@ -73,6 +91,21 @@ function initializeSession() {
     } else {
       // If the connection is successful, publish the publisher to the session
       session.publish(publisher, handleError);
+      const statsInterval = setInterval(() => {
+        publisher.getStats((error, stats) => {
+            if (stats.stats.audio.packetsLost > 1000) {
+                triggerSupportButton();
+            }
+
+            if (stats.stats.video.packetsLost > 1000) {
+                triggerSupportButton();
+            }
+
+            if (stats.stats.video.framerate < 10) {
+                triggerSupportButton();
+            }
+        });
+      }, 30000);
     }
   });
 }

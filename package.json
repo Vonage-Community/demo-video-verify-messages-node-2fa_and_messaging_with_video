@@ -26,6 +26,7 @@
     "express-flash-message": "^3.0.2",
     "express-session": "^1.17.3",
     "fast-glob": "^3.3.1",
+    "node-fetch": "^3.3.2",
     "twig": "^1.16.0",
     "unique-names-generator": "^4.7.1"
   },
